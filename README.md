@@ -14,10 +14,10 @@ KeyLARA is a high-security cryptographic library for Erlang/OTP that leverages t
 ### RSA Operations
 
 ```erlang
-{ok, {PublicKey, PrivateKey}} = keylara\:generate_rsa_keypair(NetPid)
-{ok, {PublicKey, PrivateKey}} = keylara\:generate_rsa_keypair(NetPid, KeySize)
-{ok, EncryptedData} = keylara\:rsa_encrypt(Data, PublicKey)
-{ok, DecryptedData} = keylara\:rsa_decrypt(EncryptedData, PrivateKey)
+{ok, {PublicKey, PrivateKey}} = keylara:generate_rsa_keypair(NetPid)
+{ok, {PublicKey, PrivateKey}} = keylara:generate_rsa_keypair(NetPid, KeySize)
+{ok, EncryptedData} = keylara:rsa_encrypt(Data, PublicKey)
+{ok, DecryptedData} = keylara:rsa_decrypt(EncryptedData, PrivateKey)
 ```
 
 ## Requirements
@@ -32,11 +32,11 @@ KeyLARA is a high-security cryptographic library for Erlang/OTP that leverages t
 1> keylara\:start().
 Keylara started in standalone mode (Alara not available)
 ok
-2> {ok, {PublicKey, PrivateKey}} = keylara\:generate_rsa_keypair(self(), 2048).
+2> {ok, {PublicKey, PrivateKey}} = keylara:generate_rsa_keypair(self(), 2048).
 {ok,{{1337,1337,...},...}}
-3> {ok, Encrypted} = keylara\:rsa_encrypt("Hello, World!", PublicKey).
+3> {ok, Encrypted} = keylara:rsa_encrypt("Hello, World!", PublicKey).
 {ok,<<...>>}
-4> {ok, Decrypted} = keylara\:rsa_decrypt(Encrypted, PrivateKey).
+4> {ok, Decrypted} = keylara:rsa_decrypt(Encrypted, PrivateKey).
 {ok,"Hello, World!"}
 ```
 
