@@ -38,7 +38,7 @@ generate_key(NetPid) ->
 -spec generate_key(pid(), aes_key_size()) -> {ok, aes_key()} | keylara_error().
 generate_key(NetPid, KeySize) when KeySize =:= ?AES_128; KeySize =:= ?AES_192; KeySize =:= ?AES_256 ->
     try
-        case keylara_entropy:generate_aes_key(NetPid, KeySize) of
+        case generate_aes_key(NetPid, KeySize) of
             {ok, AESKey} ->
                 {ok, AESKey};
             {error, EntropyReason} ->
@@ -51,11 +51,32 @@ generate_key(NetPid, KeySize) when KeySize =:= ?AES_128; KeySize =:= ?AES_192; K
 generate_key(_NetPid, KeySize) ->
     {error, {invalid_key_size, KeySize, "Must be 128, 192, or 256 bits"}}.
 
+%% @doc Generate AES key using Alara entropy
+%% @param NetPid - Alara network process ID
+%% @param KeySize - AES key size in bits (128, 192, or 256)
+%% @return {ok, AESKey} | {error, Reason}
+-spec generate_aes_key(pid(), aes_key_size()) -> {ok, aes_key()} | entropy_error().
+generate_aes_key(NetPid, KeySize) when KeySize =:= ?AES_128; KeySize =:= ?AES_192; KeySize =:= ?AES_256 ->
+    KeyBytes = KeySize div 8,
+    case keylara_entropy:get_entropy_bytes(NetPid, KeyBytes) of
+        {ok, AESKeyBytes} ->
+            {ok, AESKeyBytes};
+        {error, KeyReason} ->
+            {error, KeyReason}
+    end;
+generate_aes_key(_NetPid, KeySize) ->
+    {error, {invalid_aes_key_size, KeySize}}.
+
 %% @doc Generate random IV for AES
 %% @return 16-byte IV
 -spec generate_iv() -> aes_iv().
 generate_iv() ->
-    keylara_entropy:generate_secure_bytes(?AES_IV_SIZE).
+    case crypto:strong_rand_bytes(?AES_IV_SIZE) of
+        IV when is_binary(IV), byte_size(IV) =:= ?AES_IV_SIZE ->
+            IV;
+        _ ->
+            error({invalid_byte_count, ?AES_IV_SIZE})
+    end.
 
 %% @doc Encrypt data using AES with a randomly generated IV
 %% @param Data - Binary data to encrypt

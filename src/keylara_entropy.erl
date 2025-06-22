@@ -8,9 +8,7 @@
 -export([
     get_entropy_bits/2,
     get_entropy_bytes/2,
-    seed_random/1,
-    generate_aes_key/2,
-    generate_secure_bytes/1
+    seed_random/1
 ]).
 
 -include("keylara.hrl").
@@ -85,31 +83,6 @@ seed_random(NetPid) ->
         {error, SeedReason} ->
             {error, SeedReason}
     end.
-
-%% @doc Generate AES key using Alara entropy
-%% @param NetPid - Alara network process ID
-%% @param KeySize - AES key size in bits (128, 192, or 256)
-%% @return {ok, AESKey} | {error, Reason}
--spec generate_aes_key(pid(), aes_key_size()) -> {ok, aes_key()} | entropy_error().
-generate_aes_key(NetPid, KeySize) when KeySize =:= ?AES_128; KeySize =:= ?AES_192; KeySize =:= ?AES_256 ->
-    KeyBytes = KeySize div 8,
-    case get_entropy_bytes(NetPid, KeyBytes) of
-        {ok, AESKeyBytes} ->
-            {ok, AESKeyBytes};
-        {error, KeyReason} ->
-            {error, KeyReason}
-    end;
-generate_aes_key(_NetPid, KeySize) ->
-    {error, {invalid_aes_key_size, KeySize}}.
-
-%% @doc Generate secure random bytes (fallback when Alara is not available)
-%% @param NumBytes - Number of bytes to generate
-%% @return Binary of random bytes
--spec generate_secure_bytes(non_neg_integer()) -> binary().
-generate_secure_bytes(NumBytes) when is_integer(NumBytes), NumBytes > 0 ->
-    crypto:strong_rand_bytes(NumBytes);
-generate_secure_bytes(NumBytes) ->
-    error({invalid_byte_count, NumBytes}).
 
 %%%===================================================================
 %%% Internal Helper Functions
