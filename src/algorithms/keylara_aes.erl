@@ -1,5 +1,4 @@
 %%%===================================================================
-%%% File: src/algorithms/keylara_aes.erl
 %%% Description: AES encryption/decryption functions
 %%%===================================================================
 

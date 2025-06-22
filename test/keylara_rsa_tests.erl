@@ -644,27 +644,3 @@ generate_test_entropy(NumBits, Seed) ->
     % Use seed for reproducible test entropy
     rand:seed(exrop, {Seed, Seed * 2, Seed * 3}),
     [rand:uniform(2) =:= 1 || _ <- lists:seq(1, NumBits)].
-
-%%%===================================================================
-%%% Test Execution Instructions
-%%%===================================================================
-
-%% To run these tests, use one of the following methods:
-%%
-%% 1. Run all tests:
-%%    keylara_rsa_tests:run_all_tests().
-%%
-%% 2. Run specific test categories:
-%%    keylara_rsa_tests:run_basic_tests().
-%%    keylara_rsa_tests:run_advanced_tests().
-%%    keylara_rsa_tests:run_performance_tests().
-%%
-%% 3. Use EUnit directly:
-%%    eunit:test(keylara_rsa_tests).
-%%
-%% 4. Run with verbose output:
-%%    eunit:test(keylara_rsa_tests, [verbose]).
-
-%%%===================================================================
-%%% End of Tests
-%%%===================================================================

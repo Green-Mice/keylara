@@ -1,5 +1,4 @@
 %%%===================================================================
-%%% File: src/algorithms/keylara_rsa.erl
 %%% Description: RSA encryption/decryption functions
 %%%===================================================================
 -module(keylara_rsa).

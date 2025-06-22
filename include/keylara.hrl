@@ -1,5 +1,4 @@
 %%%===================================================================
-%%% File: include/keylara.hrl
 %%% Description: Common definitions and constants for Keylara
 %%%===================================================================
 

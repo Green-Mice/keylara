@@ -1,5 +1,4 @@
 %%%===================================================================
-%%% File: src/keylara.erl
 %%% Description: Main Keylara cryptographic module with entropy management
 %%%===================================================================
 -module(keylara).
