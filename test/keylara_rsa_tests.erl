@@ -112,7 +112,7 @@ test_basic_keypair_generation() ->
 
     try
         % Generate RSA keypair using KeyLara API
-        Result = keylara:generate_rsa_keypair(NetPid, 1024),
+        Result = keylara_rsa:generate_keypair(NetPid, 1024),
 
         % Verify successful generation
         ?assertMatch({ok, {_PublicKey, _PrivateKey}}, Result),
@@ -150,7 +150,7 @@ test_encryption_decryption_cycle() ->
     {ok, NetPid} = setup_test_network(),
 
     try
-        {ok, {PublicKey, PrivateKey}} = keylara:generate_rsa_keypair(NetPid, 1024),
+        {ok, {PublicKey, PrivateKey}} = keylara_rsa:generate_keypair(NetPid, 1024),
 
         % Test data
         TestMessages = [
@@ -164,7 +164,7 @@ test_encryption_decryption_cycle() ->
         % Test each message
         lists:foreach(fun(Message) ->
             % Encrypt message using KeyLara API
-            {ok, EncryptedData} = keylara:rsa_encrypt(Message, PublicKey),
+            {ok, EncryptedData} = keylara_rsa:encrypt(Message, PublicKey),
 
             % Verify encryption result
             ?assert(is_binary(EncryptedData)),
@@ -172,7 +172,7 @@ test_encryption_decryption_cycle() ->
             ?assertNotEqual(Message, EncryptedData),
 
             % Decrypt message using KeyLara API
-            {ok, DecryptedData} = keylara:rsa_decrypt(EncryptedData, PrivateKey),
+            {ok, DecryptedData} = keylara_rsa:decrypt(EncryptedData, PrivateKey),
 
             % Verify decryption result
             ?assert(is_binary(DecryptedData)),
@@ -194,7 +194,7 @@ test_multiple_message_sizes() ->
     {ok, NetPid} = setup_test_network(),
 
     try
-        {ok, {PublicKey, PrivateKey}} = keylara:generate_rsa_keypair(NetPid, 2048),
+        {ok, {PublicKey, PrivateKey}} = keylara_rsa:generate_keypair(NetPid, 2048),
 
         % Test different message sizes (RSA can encrypt up to key_size/8 - 11 bytes for PKCS#1 v1.5)
         % For 2048-bit key: max ~245 bytes
@@ -205,8 +205,8 @@ test_multiple_message_sizes() ->
             Message = crypto:strong_rand_bytes(Size),
 
             % Test encryption/decryption using KeyLara API
-            {ok, Encrypted} = keylara:rsa_encrypt(Message, PublicKey),
-            {ok, Decrypted} = keylara:rsa_decrypt(Encrypted, PrivateKey),
+            {ok, Encrypted} = keylara_rsa:encrypt(Message, PublicKey),
+            {ok, Decrypted} = keylara_rsa:decrypt(Encrypted, PrivateKey),
 
             % Verify
             ?assertEqual(Message, Decrypted),
@@ -233,7 +233,7 @@ test_different_key_sizes() ->
             io:format("Testing ~p-bit keys...~n", [KeySize]),
 
             % Generate keypair using KeyLara API
-            {ok, {PublicKey, PrivateKey}} = keylara:generate_rsa_keypair(NetPid, KeySize),
+            {ok, {PublicKey, PrivateKey}} = keylara_rsa:generate_keypair(NetPid, KeySize),
 
             % Verify key size - using proper bit size calculation
             Modulus = PublicKey#'RSAPublicKey'.modulus,
@@ -251,8 +251,8 @@ test_different_key_sizes() ->
             MaxMessageSize = KeySize div 8 - 11, % PKCS#1 v1.5 padding
             TestMessage = crypto:strong_rand_bytes(min(50, MaxMessageSize)),
 
-            {ok, Encrypted} = keylara:rsa_encrypt(TestMessage, PublicKey),
-            {ok, Decrypted} = keylara:rsa_decrypt(Encrypted, PrivateKey),
+            {ok, Encrypted} = keylara_rsa:encrypt(TestMessage, PublicKey),
+            {ok, Decrypted} = keylara_rsa:decrypt(Encrypted, PrivateKey),
             ?assertEqual(TestMessage, Decrypted),
 
             io:format("✓ ~p-bit key test passed (actual: ~p bits)~n", [KeySize, ModulusBitSize])
@@ -275,35 +275,35 @@ test_error_handling() ->
     {ok, NetPid} = setup_test_network(),
 
     try
-        {ok, {PublicKey, PrivateKey}} = keylara:generate_rsa_keypair(NetPid, 1024),
+        {ok, {PublicKey, PrivateKey}} = keylara_rsa:generate_keypair(NetPid, 1024),
 
         % Test 1: Message too large for RSA encryption
         TooLargeMessage = crypto:strong_rand_bytes(200), % Too large for 1024-bit key
-        EncryptResult = keylara:rsa_encrypt(TooLargeMessage, PublicKey),
+        EncryptResult = keylara_rsa:encrypt(TooLargeMessage, PublicKey),
         ?assertMatch({error, _}, EncryptResult),
         io:format("✓ Large message error handling: OK~n"),
 
         % Test 2: Invalid encrypted data for decryption
         InvalidEncrypted = <<"invalid encrypted data">>,
-        DecryptResult = keylara:rsa_decrypt(InvalidEncrypted, PrivateKey),
+        DecryptResult = keylara_rsa:decrypt(InvalidEncrypted, PrivateKey),
         ?assertMatch({error, _}, DecryptResult),
         io:format("✓ Invalid encrypted data error handling: OK~n"),
 
         % Test 3: Wrong key for decryption
-        {ok, {_PublicKey2, PrivateKey2}} = keylara:generate_rsa_keypair(NetPid, 1024),
+        {ok, {_PublicKey2, PrivateKey2}} = keylara_rsa:generate_keypair(NetPid, 1024),
         TestMessage = <<"Test message">>,
-        {ok, Encrypted} = keylara:rsa_encrypt(TestMessage, PublicKey),
-        WrongKeyResult = keylara:rsa_decrypt(Encrypted, PrivateKey2),
+        {ok, Encrypted} = keylara_rsa:encrypt(TestMessage, PublicKey),
+        WrongKeyResult = keylara_rsa:decrypt(Encrypted, PrivateKey2),
         ?assertMatch({error, _}, WrongKeyResult),
         io:format("✓ Wrong key error handling: OK~n"),
 
         % Test 4: Non-binary input for encryption (should be handled by keylara_rsa)
         ListMessage = "Hello, World!",
-        {ok, _} = keylara:rsa_encrypt(ListMessage, PublicKey), % Should convert to binary
+        {ok, _} = keylara_rsa:encrypt(ListMessage, PublicKey), % Should convert to binary
         io:format("✓ List to binary conversion: OK~n"),
 
         % Test 5: Invalid key sizes
-        InvalidKeySizeResult = keylara:generate_rsa_keypair(NetPid, 512),
+        InvalidKeySizeResult = keylara_rsa:generate_keypair(NetPid, 512),
         ?assertMatch({error, _}, InvalidKeySizeResult),
         io:format("✓ Invalid key size error handling: OK~n")
 
@@ -331,7 +331,7 @@ test_entropy_requirements() ->
         timer:sleep(50),
 
         % Try to generate keypair - should fail
-        Result = keylara:generate_rsa_keypair(NetPid, 1024),
+        Result = keylara_rsa:generate_keypair(NetPid, 1024),
         ?assertMatch({error, {entropy_generation_failed, _}}, Result),
         io:format("✓ Insufficient entropy detection: OK~n")
 
@@ -343,7 +343,7 @@ test_entropy_requirements() ->
     {ok, NetPid2} = setup_test_network(4096), % Plenty of entropy
 
     try
-        Result2 = keylara:generate_rsa_keypair(NetPid2, 1024),
+        Result2 = keylara_rsa:generate_keypair(NetPid2, 1024),
         ?assertMatch({ok, _}, Result2),
         io:format("✓ Adequate entropy generation: OK~n")
 
@@ -362,7 +362,7 @@ test_key_consistency() ->
     try
         % Generate multiple keypairs and verify they're different
         Keys = [begin
-            {ok, KeyPair} = keylara:generate_rsa_keypair(NetPid, 1024),
+            {ok, KeyPair} = keylara_rsa:generate_keypair(NetPid, 1024),
             KeyPair
         end || _ <- lists:seq(1, 3)],
 
@@ -382,8 +382,8 @@ test_key_consistency() ->
         TestMessage = <<"Consistency test message">>,
 
         lists:foreach(fun({PublicKey, PrivateKey}) ->
-            {ok, Encrypted} = keylara:rsa_encrypt(TestMessage, PublicKey),
-            {ok, Decrypted} = keylara:rsa_decrypt(Encrypted, PrivateKey),
+            {ok, Encrypted} = keylara_rsa:encrypt(TestMessage, PublicKey),
+            {ok, Decrypted} = keylara_rsa:decrypt(Encrypted, PrivateKey),
             ?assertEqual(TestMessage, Decrypted)
         end, Keys),
 
@@ -403,7 +403,7 @@ test_concurrent_operations() ->
 
     try
         % Generate a keypair for shared use
-        {ok, {PublicKey, PrivateKey}} = keylara:generate_rsa_keypair(NetPid, 1024),
+        {ok, {PublicKey, PrivateKey}} = keylara_rsa:generate_keypair(NetPid, 1024),
 
         % Create multiple concurrent encryption/decryption operations
         NumProcesses = 5,
@@ -415,8 +415,8 @@ test_concurrent_operations() ->
         Pids = [spawn(fun() ->
             try
                 % Each process performs encryption/decryption
-                {ok, Encrypted} = keylara:rsa_encrypt(TestMessage, PublicKey),
-                {ok, Decrypted} = keylara:rsa_decrypt(Encrypted, PrivateKey),
+                {ok, Encrypted} = keylara_rsa:encrypt(TestMessage, PublicKey),
+                {ok, Decrypted} = keylara_rsa:decrypt(Encrypted, PrivateKey),
                 ?assertEqual(TestMessage, Decrypted),
                 Parent ! {self(), success}
             catch
@@ -458,7 +458,7 @@ test_performance() ->
     try
         % Benchmark key generation
         KeyGenStart = erlang:monotonic_time(microsecond),
-        {ok, {PublicKey, PrivateKey}} = keylara:generate_rsa_keypair(NetPid, 1024),
+        {ok, {PublicKey, PrivateKey}} = keylara_rsa:generate_keypair(NetPid, 1024),
         KeyGenTime = erlang:monotonic_time(microsecond) - KeyGenStart,
 
         io:format("Key generation time: ~p μs (~.2f ms)~n",
@@ -470,7 +470,7 @@ test_performance() ->
 
         % Encryption benchmark
         EncStart = erlang:monotonic_time(microsecond),
-        EncResults = [keylara:rsa_encrypt(TestMessage, PublicKey) || _ <- lists:seq(1, NumIterations)],
+        EncResults = [keylara_rsa:encrypt(TestMessage, PublicKey) || _ <- lists:seq(1, NumIterations)],
         EncTime = erlang:monotonic_time(microsecond) - EncStart,
 
         % Verify all encryptions succeeded
@@ -484,7 +484,7 @@ test_performance() ->
         % Decryption benchmark
         [{ok, SampleEncrypted} | _] = EncResults,
         DecStart = erlang:monotonic_time(microsecond),
-        DecResults = [keylara:rsa_decrypt(SampleEncrypted, PrivateKey) || _ <- lists:seq(1, NumIterations)],
+        DecResults = [keylara_rsa:decrypt(SampleEncrypted, PrivateKey) || _ <- lists:seq(1, NumIterations)],
         DecTime = erlang:monotonic_time(microsecond) - DecStart,
 
         % Verify all decryptions succeeded
@@ -530,7 +530,7 @@ test_default_key_generation() ->
     
     try
         % Test default key size (should be 2048)
-        {ok, {PublicKey, _PrivateKey}} = keylara:generate_rsa_keypair(NetPid),
+        {ok, {PublicKey, _PrivateKey}} = keylara:generate_keypair(NetPid),
         
         % Verify it's approximately 2048 bits
         Modulus = PublicKey#'RSAPublicKey'.modulus,

@@ -101,7 +101,7 @@ test_basic_key_generation() ->
         KeySizes = [128, 192, 256],
         lists:foreach(fun(KeySize) ->
                               % Generate key using KeyLara API
-                              Result = keylara:generate_aes_key(NetPid, KeySize),
+                              Result = keylara_aes:generate_key(NetPid, KeySize),
 
                               % Verify successful generation
                               ?assertMatch({ok, _Key}, Result),
@@ -128,7 +128,7 @@ test_encryption_decryption_cycle() ->
     {ok, NetPid} = setup_test_network(),
 
     try
-        {ok, Key} = keylara:generate_aes_key(NetPid, 256),
+        {ok, Key} = keylara_aes:generate_key(NetPid, 256),
 
         % Test data
         TestMessages = [
@@ -143,7 +143,7 @@ test_encryption_decryption_cycle() ->
         % Test each message
         lists:foreach(fun(Message) ->
                               % Encrypt message using KeyLara API
-                              {ok, {IV, EncryptedData}} = keylara:aes_encrypt(Message, Key),
+                              {ok, {IV, EncryptedData}} = keylara_aes:encrypt(Message, Key),
 
                               % Verify encryption result
                               ?assert(is_binary(IV)),
@@ -153,7 +153,7 @@ test_encryption_decryption_cycle() ->
                               ?assertNotEqual(Message, EncryptedData),
 
                               % Decrypt message using KeyLara API
-                              {ok, DecryptedData} = keylara:aes_decrypt(EncryptedData, Key, IV),
+                              {ok, DecryptedData} = keylara_aes:decrypt(EncryptedData, Key, IV),
 
                               % Verify decryption result
                               ?assert(is_binary(DecryptedData)),
@@ -175,7 +175,7 @@ test_multiple_message_sizes() ->
     {ok, NetPid} = setup_test_network(),
 
     try
-        {ok, Key} = keylara:generate_aes_key(NetPid, 256),
+        {ok, Key} = keylara_aes:generate_key(NetPid, 256),
 
         % Test different message sizes
         % AES can handle much larger messages than RSA
@@ -186,8 +186,8 @@ test_multiple_message_sizes() ->
                               Message = crypto:strong_rand_bytes(Size),
 
                               % Test encryption/decryption using KeyLara API
-                              {ok, {IV, Encrypted}} = keylara:aes_encrypt(Message, Key),
-                              {ok, Decrypted} = keylara:aes_decrypt(Encrypted, Key, IV),
+                              {ok, {IV, Encrypted}} = keylara_aes:encrypt(Message, Key),
+                              {ok, Decrypted} = keylara_aes:decrypt(Encrypted, Key, IV),
 
 
                               % Verify
@@ -215,7 +215,7 @@ test_different_key_sizes() ->
                               io:format("Testing ~p-bit keys...~n", [KeySize]),
 
                               % Generate key using KeyLara API
-                              {ok, Key} = keylara:generate_aes_key(NetPid, KeySize),
+                              {ok, Key} = keylara_aes:generate_key(NetPid, KeySize),
 
                               % Verify key size
                               ExpectedBytes = KeySize div 8,
@@ -227,8 +227,8 @@ test_different_key_sizes() ->
                               % Test encryption with this key size
                               TestMessage = crypto:strong_rand_bytes(100),
 
-                              {ok, {IV, Encrypted}} = keylara:aes_encrypt(TestMessage, Key),
-                              {ok, Decrypted} = keylara:aes_decrypt(Encrypted, Key, IV),
+                              {ok, {IV, Encrypted}} = keylara_aes:encrypt(TestMessage, Key),
+                              {ok, Decrypted} = keylara_aes:decrypt(Encrypted, Key, IV),
                               ?assertEqual(TestMessage, Decrypted),
 
                               io:format("✓ ~p-bit key test passed~n", [KeySize])
@@ -251,25 +251,25 @@ test_error_handling() ->
     {ok, NetPid} = setup_test_network(),
 
     try
-        {ok, Key} = keylara:generate_aes_key(NetPid, 256),
+        {ok, Key} = keylara_aes:generate_key(NetPid, 256),
 
         % Test 1: Invalid key size
-        InvalidKeySizeResult = keylara:generate_aes_key(NetPid, 100),
+        InvalidKeySizeResult = keylara_aes:generate_key(NetPid, 100),
         ?assertMatch({error, _}, InvalidKeySizeResult),
         io:format("✓ Invalid key size error handling: OK~n"),
 
         % Test 2: Invalid encrypted data for decryption
         InvalidIV = <<"invalid iv data">>,
         InvalidEncrypted = <<"invalid encrypted data">>,
-        DecryptResult = keylara:aes_decrypt(InvalidEncrypted, Key, InvalidIV),
+        DecryptResult = keylara_aes:decrypt(InvalidEncrypted, Key, InvalidIV),
         ?assertMatch({error, _}, DecryptResult),
         io:format("✓ Invalid encrypted data error handling: OK~n"),
 
         % Test 3: Wrong key for decryption
-        {ok, WrongKey} = keylara:generate_aes_key(NetPid, 256),
+        {ok, WrongKey} = keylara_aes:generate_key(NetPid, 256),
         TestMessage = <<"Test message">>,
-        {ok, {IV, Encrypted}} = keylara:aes_encrypt(TestMessage, Key),
-        WrongKeyResult = keylara:aes_decrypt(Encrypted, WrongKey, IV),
+        {ok, {IV, Encrypted}} = keylara_aes:encrypt(TestMessage, Key),
+        WrongKeyResult = keylara_aes:decrypt(Encrypted, WrongKey, IV),
         case WrongKeyResult of
             {ok, Data} ->
                 ?assertEqual(TestMessage, Data);
@@ -280,14 +280,14 @@ test_error_handling() ->
 
         % Test 4: Non-binary input for encryption (should be handled by keylara_aes)
         ListMessage = "Hello, World!",
-        {ok, _} = keylara:aes_encrypt(ListMessage, Key), % Should convert to binary
+        {ok, _} = keylara_aes:encrypt(ListMessage, Key), % Should convert to binary
         io:format("✓ List to binary conversion: OK~n"),
 
         % Test 5: Invalid IV size for decryption
         ShortIV = <<"short">>,
         ValidMessage = <<"test">>,
-        {ok, {_ValidIV, ValidEncrypted}} = keylara:aes_encrypt(ValidMessage, Key),
-        InvalidIVResult = keylara:aes_decrypt(ValidEncrypted, Key, ShortIV),
+        {ok, {_ValidIV, ValidEncrypted}} = keylara_aes:encrypt(ValidMessage, Key),
+        InvalidIVResult = keylara_aes:decrypt(ValidEncrypted, Key, ShortIV),
         ?assertMatch({error, _}, InvalidIVResult),
         io:format("✓ Invalid IV size error handling: OK~n")
 
@@ -315,8 +315,8 @@ test_entropy_requirements() ->
         timer:sleep(50),
 
         % Try to generate key - should fail
-        Result = keylara:generate_aes_key(NetPid, 256),
-        ?assertMatch({error, {insufficient_entropy, _, _}}, Result),
+        Result = keylara_aes:generate_key(NetPid, 256),
+        ?assertMatch({error, {entropy_generation_failed, {insufficient_entropy, _, _}}}, Result),
         io:format("✓ Insufficient entropy detection: OK~n")
 
     after
@@ -327,7 +327,7 @@ test_entropy_requirements() ->
     {ok, NetPid2} = setup_test_network(1024), % Adequate entropy for AES
 
     try
-        Result2 = keylara:generate_aes_key(NetPid2, 256),
+        Result2 = keylara_aes:generate_key(NetPid2, 256),
         ?assertMatch({ok, _}, Result2),
         io:format("✓ Adequate entropy generation: OK~n")
 
@@ -345,7 +345,7 @@ test_concurrent_operations() ->
 
     try
         % Generate a key for shared use
-        {ok, Key} = keylara:generate_aes_key(NetPid, 256),
+        {ok, Key} = keylara_aes:generate_key(NetPid, 256),
 
         % Create multiple concurrent encryption/decryption operations
         NumProcesses = 5,
@@ -357,8 +357,8 @@ test_concurrent_operations() ->
         Pids = [spawn(fun() ->
                               try
                                   % Each process performs encryption/decryption
-                                  {ok, {IV, Encrypted}} = keylara:aes_encrypt(TestMessage, Key),
-                                  {ok, Decrypted} = keylara:aes_decrypt(Encrypted, Key, IV),
+                                  {ok, {IV, Encrypted}} = keylara_aes:encrypt(TestMessage, Key),
+                                  {ok, Decrypted} = keylara_aes:decrypt(Encrypted, Key, IV),
                                   ?assertEqual(TestMessage, Decrypted),
                                   Parent ! {self(), success}
                               catch
@@ -400,7 +400,7 @@ test_performance() ->
     try
         % Benchmark key generation
         KeyGenStart = erlang:monotonic_time(microsecond),
-        {ok, Key} = keylara:generate_aes_key(NetPid, 256),
+        {ok, Key} = keylara_aes:generate_key(NetPid, 256),
         KeyGenTime = erlang:monotonic_time(microsecond) - KeyGenStart,
 
         io:format("Key generation time: ~p μs (~.2f ms)~n",
@@ -412,7 +412,7 @@ test_performance() ->
 
         % Encryption benchmark
         EncStart = erlang:monotonic_time(microsecond),
-        EncResults = [keylara:aes_encrypt(TestMessage, Key) || _ <- lists:seq(1, NumIterations)],
+        EncResults = [keylara_aes:encrypt(TestMessage, Key) || _ <- lists:seq(1, NumIterations)],
         EncTime = erlang:monotonic_time(microsecond) - EncStart,
 
         % Verify all encryptions succeeded
@@ -426,7 +426,7 @@ test_performance() ->
         % Decryption benchmark
         [{ok, {SampleIV, SampleEncrypted}} | _] = EncResults,
         DecStart = erlang:monotonic_time(microsecond),
-        DecResults = [keylara:aes_decrypt(SampleEncrypted, Key, SampleIV) || _ <- lists:seq(1, NumIterations)],
+        DecResults = [keylara_aes:decrypt(SampleEncrypted, Key, SampleIV) || _ <- lists:seq(1, NumIterations)],
         DecTime = erlang:monotonic_time(microsecond) - DecStart,
 
         % Verify all decryptions succeeded
@@ -482,7 +482,7 @@ test_default_key_generation() ->
 
     try
         % Test default key size (should be 256)
-        {ok, Key} = keylara:generate_aes_key(NetPid),
+        {ok, Key} = keylara_aes:generate_key(NetPid),
 
         % Verify it's 256 bits (32 bytes)
         ?assertEqual(32, byte_size(Key)),
@@ -500,11 +500,11 @@ test_iv_properties() ->
     {ok, NetPid} = setup_test_network(),
 
     try
-        {ok, Key} = keylara:generate_aes_key(NetPid, 256),
+        {ok, Key} = keylara_aes:generate_key(NetPid, 256),
         TestMessage = <<"IV test message">>,
 
         % Generate multiple encryptions of the same message
-        Results = [keylara:aes_encrypt(TestMessage, Key) || _ <- lists:seq(1, 5)],
+        Results = [keylara_aes:encrypt(TestMessage, Key) || _ <- lists:seq(1, 5)],
 
         % Extract IVs
         IVs = [IV || {ok, {IV, _}} <- Results],
