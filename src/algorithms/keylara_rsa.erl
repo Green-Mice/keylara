@@ -12,7 +12,6 @@
     validate_key_size/1,
     get_key_size/1
 ]).
-
 -include_lib("public_key/include/public_key.hrl").
 -include("keylara.hrl").
 
@@ -38,13 +37,13 @@ generate_keypair(NetPid, KeySize) when is_pid(NetPid) ->
             ok ->
                 % Calculate how much entropy we need for RSA key generation
                 % RSA needs random primes, so we need sufficient entropy
-                EntropyBitsNeeded = KeySize * 2, % Conservative estimate
+                EntropyBytesNeeded = (KeySize * 2 + 7) div 8, % Conservative estimate converted to bytes
                 % Seed the random number generator with Alara entropy
-                case keylara_entropy:seed_random(NetPid) of
+                case seed_random(NetPid) of
                     ok ->
                         % Also get additional entropy for extra security
-                        case keylara_entropy:get_entropy_bits(NetPid, EntropyBitsNeeded) of
-                            {ok, _EntropyBits} ->
+                        case keylara:get_entropy_bytes(NetPid, EntropyBytesNeeded) of
+                            {ok, _EntropyBytes} ->
                                 % Generate RSA keypair using OTP's public_key module
                                 % The seeded random generator will be used internally
                                 PrivateKey = public_key:generate_key({rsa, KeySize, ?DEFAULT_RSA_EXPONENT}),
@@ -65,6 +64,20 @@ generate_keypair(NetPid, KeySize) when is_pid(NetPid) ->
     end;
 generate_keypair(_NetPid, _KeySize) ->
     {error, invalid_network_pid}.
+
+%% @doc Seed Erlang's random number generator with Alara entropy
+%% @param NetPid - Alara network process ID
+%% @return ok | {error, Reason}
+-spec seed_random(pid()) -> ok | {error, term()}.
+seed_random(NetPid) ->
+    case keylara:get_entropy_bytes(NetPid, 12) of % 3 * 32 bits for the seed = 96 bits = 12 bytes
+        {ok, EntropyBytes} ->
+            <<Seed1:32, Seed2:32, Seed3:32, _/binary>> = EntropyBytes,
+            rand:seed(exrop, {Seed1, Seed2, Seed3}),
+            ok;
+        {error, SeedReason} ->
+            {error, SeedReason}
+    end.
 
 %% @doc Encrypt data using RSA public key
 %% @param Data - Binary data to encrypt
@@ -161,5 +174,5 @@ validate_key_size_test() ->
     ?assertMatch({error, {invalid_key_size, 512, _}}, validate_key_size(512)),
     ?assertMatch({error, {invalid_key_size, 8192, _}}, validate_key_size(8192)),
     ?assertMatch({error, {invalid_key_size_type, _}}, validate_key_size("invalid")).
-
 -endif.
+

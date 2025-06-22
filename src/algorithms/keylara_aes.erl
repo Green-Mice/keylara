@@ -58,7 +58,7 @@ generate_key(_NetPid, KeySize) ->
 -spec generate_aes_key(pid(), aes_key_size()) -> {ok, aes_key()} | entropy_error().
 generate_aes_key(NetPid, KeySize) when KeySize =:= ?AES_128; KeySize =:= ?AES_192; KeySize =:= ?AES_256 ->
     KeyBytes = KeySize div 8,
-    case keylara_entropy:get_entropy_bytes(NetPid, KeyBytes) of
+    case keylara:get_entropy_bytes(NetPid, KeyBytes) of
         {ok, AESKeyBytes} ->
             {ok, AESKeyBytes};
         {error, KeyReason} ->
