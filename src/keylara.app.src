@@ -1,0 +1,37 @@
+{application, keylara,
+ [{description, "KeyLARA - Cryptographic Library using ALARA Distributed Entropy Network"},
+  {vsn, "1.0.0"},
+  {registered, []},
+  {applications, [
+      kernel,
+      stdlib,
+      alara,
+      crypto,
+      public_key
+  ]},
+  {env, []},
+  {modules, [keylara]},
+  {licenses, ["Apache-2.0"]},
+  {links, [
+      {"GitHub", "https://github.com/roquess/keylara"},
+      {"Documentation", "https://hexdocs.pm/keylara/"}
+  ]},
+  {build_tools, ["rebar3"]},
+  {files, [
+      "src",
+      "include",
+      "rebar.config",
+      "rebar.lock",
+      "README.md",
+      "CHANGELOG.md",
+      "LICENSE"
+  ]},
+  {maintainers, ["Your Name"]},
+  {pkg_name, keylara},
+  {exclude_files, [
+      ".git*",
+      "_build",
+      "test",
+      "examples"
+  ]}
+ ]}.
