@@ -26,7 +26,6 @@
       "CHANGELOG.md",
       "LICENSE"
   ]},
-  {maintainers, ["Your Name"]},
   {pkg_name, keylara},
   {exclude_files, [
       ".git*",
