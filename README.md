@@ -1,43 +1,22 @@
-# keylara
-KeyLARA is a high-security cryptographic library for Erlang/OTP that leverages the ALARA (Distributed Entropy Network System) for generating cryptographically secure keys and performing encryption operations.
+# Keylara
 
-## Features
+Keylara is a high-security cryptographic library for Erlang/OTP designed to provide strong cryptographic operations with enhanced entropy through the ALARA (Distributed Entropy Network System).
 
-- RSA key pair generation
-- RSA encryption/decryption
-- AES key generation
-- AES encryption/decryption
-- Integration with Alara network for enhanced entropy
+The library supports a variety of algorithms, both classical and post-quantum, each implemented in its own module.
 
-## API Reference
+## Features and Algorithms
 
-### RSA Operations
+* **RSA**:
+  RSA (Rivest–Shamir–Adleman) is one of the first public-key cryptosystems, widely used for secure data transmission. In Keylara, RSA is used for key pair generation and encryption/decryption operations. Its security is based on the difficulty of factoring large integers.
 
-```erlang
-{ok, {PublicKey, PrivateKey}} = keylara:generate_rsa_keypair(NetPid)
-{ok, {PublicKey, PrivateKey}} = keylara:generate_rsa_keypair(NetPid, KeySize)
-{ok, EncryptedData} = keylara:rsa_encrypt(Data, PublicKey)
-{ok, DecryptedData} = keylara:rsa_decrypt(EncryptedData, PrivateKey)
-```
+* **ML-KEM (CRYSTALS-Kyber)**:
+  ML-KEM is a Key Encapsulation Mechanism based on the Kyber algorithm, part of the CRYSTALS suite. Kyber is a lattice-based post-quantum cryptosystem designed to be secure against quantum computer attacks. Keylara uses ML-KEM for secure key exchange and encapsulation.
 
-## Requirements
+* **Dilithium**:
+  Dilithium is a lattice-based digital signature scheme from the CRYSTALS project. It provides strong post-quantum signature security, designed to resist attacks from both classical and quantum computers. Keylara supports Dilithium for signing and verifying messages.
 
-- Erlang/OTP
-- Crypto and Public Key applications
-- Alara network (optional, for enhanced entropy)
+* **Integration with Alara Network**:
+  The ALARA (Distributed Entropy Network System) enhances the randomness used for cryptographic operations, increasing security and reducing predictability of keys.
 
-## Usage
-
-```
-1> keylara\:start().
-Keylara started in standalone mode (Alara not available)
-ok
-2> {ok, {PublicKey, PrivateKey}} = keylara:generate_rsa_keypair(self(), 2048).
-{ok,{{1337,1337,...},...}}
-3> {ok, Encrypted} = keylara:rsa_encrypt("Hello, World!", PublicKey).
-{ok,<<...>>}
-4> {ok, Decrypted} = keylara:rsa_decrypt(Encrypted, PrivateKey).
-{ok,"Hello, World!"}
-```
-
+Keylara is intended to be explored through its comprehensive set of test files, which demonstrate usage patterns, algorithmic correctness, and error handling. These tests serve both as validation and as practical examples for integrating Keylara into your applications.
 
