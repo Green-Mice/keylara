@@ -4,6 +4,10 @@ Keylara is a high-security cryptographic library for Erlang/OTP designed to prov
 
 The library supports a variety of algorithms, both classical and post-quantum, each implemented in its own module.
 
+[![Hex.pm](https://img.shields.io/hexpm/v/keylara.svg)](https://hex.pm/packages/keylara)
+[![Hex Docs](https://img.shields.io/badge/hex-docs-blue.svg)](https://hexdocs.pm/keylara)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+
 ## Features and Algorithms
 
 ### Classical Algorithms
