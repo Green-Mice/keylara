@@ -18,12 +18,10 @@
 
 -include("keylara.hrl").
 
-%% @type ML-KEM parameter sets
 -define(MLKEM_512, mlkem_512).
 -define(MLKEM_768, mlkem_768).
 -define(MLKEM_1024, mlkem_1024).
 
-%% @type ML-KEM parameter sizes
 -define(MLKEM_PARAMS, #{
     mlkem_512 => #{
         k => 2,
@@ -48,15 +46,10 @@
     }
 }).
 
-%% @type ML-KEM parameter set
 -type mlkem_param_set() :: mlkem_512 | mlkem_768 | mlkem_1024.
-%% @type ML-KEM public key
 -type mlkem_public_key() :: binary().
-%% @type ML-KEM private key
 -type mlkem_private_key() :: binary().
-%% @type ML-KEM ciphertext
 -type mlkem_ciphertext() :: binary().
-%% @type ML-KEM shared secret
 -type mlkem_shared_secret() :: binary().
 
 %%%===================================================================
