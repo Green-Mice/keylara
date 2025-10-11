@@ -1,9 +1,10 @@
 %%%===================================================================
 %%% Description: RSA encryption/decryption functions
+%%% Using centralized entropy management from keylara module
 %%%===================================================================
 -module(keylara_rsa).
 -export([
-    generate_keypair/2,
+    generate_keypair/0,
     generate_keypair/1,
     encrypt/2,
     decrypt/2,
@@ -19,29 +20,28 @@
 %%%===================================================================
 
 %% @doc Generate RSA keypair using default key size
-%% @param NetPid - Process ID of the Alara network
 %% @return {ok, {PublicKey, PrivateKey}} | {error, Reason}
--spec generate_keypair(pid()) -> {ok, {rsa_public_key(), rsa_private_key()}} | keylara_error().
-generate_keypair(NetPid) ->
-    generate_keypair(NetPid, ?DEFAULT_RSA_KEY_SIZE).
+-spec generate_keypair() -> {ok, {rsa_public_key(), rsa_private_key()}} | keylara_error().
+generate_keypair() ->
+    generate_keypair(?DEFAULT_RSA_KEY_SIZE).
 
 %% @doc Generate RSA keypair using Alara distributed entropy network
-%% @param NetPid - Process ID of the Alara network
+%% Entropy is managed internally by keylara module
 %% @param KeySize - RSA key size in bits (1024, 2048, 4096)
 %% @return {ok, {PublicKey, PrivateKey}} | {error, Reason}
--spec generate_keypair(pid(), rsa_key_size()) -> {ok, {rsa_public_key(), rsa_private_key()}} | keylara_error().
-generate_keypair(NetPid, KeySize) when is_pid(NetPid) ->
+-spec generate_keypair(rsa_key_size()) -> {ok, {rsa_public_key(), rsa_private_key()}} | keylara_error().
+generate_keypair(KeySize) ->
     try
         case validate_key_size(KeySize) of
             ok ->
                 % Calculate how much entropy we need for RSA key generation
-                % RSA needs random primes, so we need sufficient entropy
-                EntropyBytesNeeded = (KeySize * 2 + 7) div 8, % Conservative estimate converted to bytes
-                % Seed the random number generator with Alara entropy
-                case seed_random(NetPid) of
+                EntropyBytesNeeded = (KeySize * 2 + 7) div 8, % Conservative estimate
+                
+                % Seed the random number generator with Alara entropy via keylara
+                case keylara:seed_random() of
                     ok ->
-                        % Also get additional entropy for extra security
-                        case keylara:get_entropy_bytes(NetPid, EntropyBytesNeeded) of
+                        % Get additional entropy for extra security
+                        case keylara:get_entropy_bytes(EntropyBytesNeeded) of
                             {ok, _EntropyBytes} ->
                                 % Generate RSA keypair using OTP's public_key module
                                 % The seeded random generator will be used internally
@@ -60,22 +60,6 @@ generate_keypair(NetPid, KeySize) when is_pid(NetPid) ->
     catch
         Error:CatchReason:Stacktrace ->
             {error, {keypair_generation_failed, Error, CatchReason, Stacktrace}}
-    end;
-generate_keypair(_NetPid, _KeySize) ->
-    {error, invalid_network_pid}.
-
-%% @doc Seed Erlang's random number generator with Alara entropy
-%% @param NetPid - Alara network process ID
-%% @return ok | {error, Reason}
--spec seed_random(pid()) -> ok | {error, term()}.
-seed_random(NetPid) ->
-    case keylara:get_entropy_bytes(NetPid, 12) of % 3 * 32 bits for the seed = 96 bits = 12 bytes
-        {ok, EntropyBytes} ->
-            <<Seed1:32, Seed2:32, Seed3:32, _/binary>> = EntropyBytes,
-            rand:seed(exrop, {Seed1, Seed2, Seed3}),
-            ok;
-        {error, SeedReason} ->
-            {error, SeedReason}
     end.
 
 %% @doc Encrypt data using RSA public key

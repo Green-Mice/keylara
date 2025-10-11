@@ -1,12 +1,13 @@
 %%%===================================================================
 %%% Description: AES encryption/decryption functions
+%%% Using centralized entropy management from keylara module
 %%%===================================================================
 
 -module(keylara_aes).
 
 -export([
+    generate_key/0,
     generate_key/1,
-    generate_key/2,
     encrypt/2,
     encrypt/3,
     decrypt/2,
@@ -24,20 +25,18 @@
 %%%===================================================================
 
 %% @doc Generate AES key using Alara distributed entropy network
-%% @param NetPid - Process ID of the Alara network
 %% @return {ok, AESKey} | {error, Reason} - Generates AES-256 key by default
--spec generate_key(pid()) -> {ok, aes_key()} | keylara_error().
-generate_key(NetPid) ->
-    generate_key(NetPid, ?AES_256).
+-spec generate_key() -> {ok, aes_key()} | keylara_error().
+generate_key() ->
+    generate_key(?AES_256).
 
 %% @doc Generate AES key of specific size using Alara distributed entropy network
-%% @param NetPid - Process ID of the Alara network
 %% @param KeySize - AES key size in bits (128, 192, or 256)
 %% @return {ok, AESKey} | {error, Reason}
--spec generate_key(pid(), aes_key_size()) -> {ok, aes_key()} | keylara_error().
-generate_key(NetPid, KeySize) when KeySize =:= ?AES_128; KeySize =:= ?AES_192; KeySize =:= ?AES_256 ->
+-spec generate_key(aes_key_size()) -> {ok, aes_key()} | keylara_error().
+generate_key(KeySize) when KeySize =:= ?AES_128; KeySize =:= ?AES_192; KeySize =:= ?AES_256 ->
     try
-        case generate_aes_key(NetPid, KeySize) of
+        case generate_aes_key(KeySize) of
             {ok, AESKey} ->
                 {ok, AESKey};
             {error, EntropyReason} ->
@@ -47,23 +46,22 @@ generate_key(NetPid, KeySize) when KeySize =:= ?AES_128; KeySize =:= ?AES_192; K
         Error:CatchReason:Stack ->
             {error, {aes_key_generation_failed, Error, CatchReason, Stack}}
     end;
-generate_key(_NetPid, KeySize) ->
+generate_key(KeySize) ->
     {error, {invalid_key_size, KeySize, "Must be 128, 192, or 256 bits"}}.
 
-%% @doc Generate AES key using Alara entropy
-%% @param NetPid - Alara network process ID
+%% @doc Generate AES key using Alara entropy via keylara
 %% @param KeySize - AES key size in bits (128, 192, or 256)
 %% @return {ok, AESKey} | {error, Reason}
--spec generate_aes_key(pid(), aes_key_size()) -> {ok, aes_key()} | entropy_error().
-generate_aes_key(NetPid, KeySize) when KeySize =:= ?AES_128; KeySize =:= ?AES_192; KeySize =:= ?AES_256 ->
+-spec generate_aes_key(aes_key_size()) -> {ok, aes_key()} | entropy_error().
+generate_aes_key(KeySize) when KeySize =:= ?AES_128; KeySize =:= ?AES_192; KeySize =:= ?AES_256 ->
     KeyBytes = KeySize div 8,
-    case keylara:get_entropy_bytes(NetPid, KeyBytes) of
+    case keylara:get_entropy_bytes(KeyBytes) of
         {ok, AESKeyBytes} ->
             {ok, AESKeyBytes};
         {error, KeyReason} ->
             {error, KeyReason}
     end;
-generate_aes_key(_NetPid, KeySize) ->
+generate_aes_key(KeySize) ->
     {error, {invalid_aes_key_size, KeySize}}.
 
 %% @doc Generate random IV for AES
@@ -125,7 +123,6 @@ encrypt(Data, AESKey, IV) when is_binary(Data), is_binary(AESKey), is_binary(IV)
                         case get_key_type(AESKey) of
                             {ok, AESType} ->
                                 % Pad data to block size (PKCS#7 padding)
-
                                 PaddedData = pkcs7_pad(Data, ?AES_BLOCK_SIZE),
                                 % Encrypt using crypto module
                                 EncryptedData = crypto:crypto_one_time(AESType, AESKey, IV, PaddedData, true),
@@ -297,3 +294,4 @@ pkcs7_unpad(PaddedData) when is_binary(PaddedData) ->
     end;
 pkcs7_unpad(PaddedData) ->
     {error, {invalid_data_type, PaddedData}}.
+

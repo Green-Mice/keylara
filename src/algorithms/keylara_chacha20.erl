@@ -1,10 +1,11 @@
 %%%===================================================================
 %%% Description: ChaCha20 stream cipher implementation with Alara entropy
+%%% Using centralized entropy management from keylara module
 %%%===================================================================
 -module(keylara_chacha20).
 -export([
-    generate_key/1,
-    generate_nonce/1,
+    generate_key/0,
+    generate_nonce/0,
     encrypt/3,
     decrypt/3,
     encrypt/4,
@@ -33,32 +34,26 @@
 %%%===================================================================
 
 %% @doc Generate ChaCha20 key using Alara distributed entropy
-%% @param NetPid - Process ID of the Alara network
 %% @return {ok, Key} | {error, Reason}
--spec generate_key(pid()) -> {ok, chacha20_key()} | keylara_error().
-generate_key(NetPid) when is_pid(NetPid) ->
-    case keylara:get_entropy_bytes(NetPid, ?CHACHA20_KEY_SIZE) of
+-spec generate_key() -> {ok, chacha20_key()} | keylara_error().
+generate_key() ->
+    case keylara:get_entropy_bytes(?CHACHA20_KEY_SIZE) of
         {ok, KeyBytes} ->
             {ok, KeyBytes};
         {error, Reason} ->
             {error, {key_generation_failed, Reason}}
-    end;
-generate_key(_NetPid) ->
-    {error, invalid_network_pid}.
+    end.
 
 %% @doc Generate ChaCha20 nonce using Alara distributed entropy
-%% @param NetPid - Process ID of the Alara network
 %% @return {ok, Nonce} | {error, Reason}
--spec generate_nonce(pid()) -> {ok, chacha20_nonce()} | keylara_error().
-generate_nonce(NetPid) when is_pid(NetPid) ->
-    case keylara:get_entropy_bytes(NetPid, ?CHACHA20_NONCE_SIZE) of
+-spec generate_nonce() -> {ok, chacha20_nonce()} | keylara_error().
+generate_nonce() ->
+    case keylara:get_entropy_bytes(?CHACHA20_NONCE_SIZE) of
         {ok, NonceBytes} ->
             {ok, NonceBytes};
         {error, Reason} ->
             {error, {nonce_generation_failed, Reason}}
-    end;
-generate_nonce(_NetPid) ->
-    {error, invalid_network_pid}.
+    end.
 
 %% @doc Encrypt data using ChaCha20 with counter = 0
 %% @param Data - Binary data to encrypt
@@ -203,14 +198,14 @@ init_chacha20_state(Key, Nonce, Counter) ->
     C1 = 16#3320646e,
     C2 = 16#79622d32,
     C3 = 16#6b206574,
-    
+
     % Extract key words (little-endian)
     <<K0:32/little, K1:32/little, K2:32/little, K3:32/little,
       K4:32/little, K5:32/little, K6:32/little, K7:32/little>> = Key,
-    
+
     % Extract nonce words (little-endian)
     <<N0:32/little, N1:32/little, N2:32/little>> = Nonce,
-    
+
     % Create initial state
     {C0, C1, C2, C3, K0, K1, K2, K3, K4, K5, K6, K7, Counter, N0, N1, N2}.
 
@@ -244,13 +239,13 @@ chacha20_rounds(State, RoundsLeft) ->
 quarter_round(State, A, B, C, D) ->
     % Convert tuple to list for easier manipulation
     StateList = tuple_to_list(State),
-    
+
     % Get values
     VA = lists:nth(A + 1, StateList),
     VB = lists:nth(B + 1, StateList),
     VC = lists:nth(C + 1, StateList),
     VD = lists:nth(D + 1, StateList),
-    
+
     % Perform quarter round operations
     VA1 = (VA + VB) band 16#ffffffff,
     VD1 = rotl32(VD bxor VA1, 16),
@@ -260,12 +255,12 @@ quarter_round(State, A, B, C, D) ->
     VD2 = rotl32(VD1 bxor VA2, 8),
     VC2 = (VC1 + VD2) band 16#ffffffff,
     VB2 = rotl32(VB1 bxor VC2, 7),
-    
+
     % Update state list
     NewStateList = lists:foldl(fun({Idx, Val}, Acc) ->
         lists:sublist(Acc, Idx) ++ [Val] ++ lists:nthtail(Idx + 1, Acc)
     end, StateList, [{A, VA2}, {B, VB2}, {C, VC2}, {D, VD2}]),
-    
+
     list_to_tuple(NewStateList).
 
 %% @doc Rotate left 32-bit value
@@ -313,7 +308,7 @@ validate_key_test() ->
     ValidKey = <<0:256>>,
     InvalidKey1 = <<0:128>>,
     InvalidKey2 = "not_binary",
-    
+
     ?assertEqual(ok, validate_key(ValidKey)),
     ?assertMatch({error, {invalid_key_size, 16, 32}}, validate_key(InvalidKey1)),
     ?assertMatch({error, invalid_key_format}, validate_key(InvalidKey2)).
@@ -322,7 +317,7 @@ validate_nonce_test() ->
     ValidNonce = <<0:96>>,
     InvalidNonce1 = <<0:64>>,
     InvalidNonce2 = "not_binary",
-    
+
     ?assertEqual(ok, validate_nonce(ValidNonce)),
     ?assertMatch({error, {invalid_nonce_size, 8, 12}}, validate_nonce(InvalidNonce1)),
     ?assertMatch({error, invalid_nonce_format}, validate_nonce(InvalidNonce2)).
@@ -338,9 +333,10 @@ chacha20_test_vector_test() ->
             16#10,16#11,16#12,16#13,16#14,16#15,16#16,16#17,16#18,16#19,16#1a,16#1b,16#1c,16#1d,16#1e,16#1f>>,
     Nonce = <<16#00,16#00,16#00,16#00,16#00,16#00,16#00,16#4a,16#00,16#00,16#00,16#00>>,
     Plaintext = <<"Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it.">>,
-    
+
     {ok, Ciphertext} = encrypt(Plaintext, Key, Nonce, 1),
     {ok, Decrypted} = decrypt(Ciphertext, Key, Nonce, 1),
-    
+
     ?assertEqual(Plaintext, Decrypted).
 -endif.
+
