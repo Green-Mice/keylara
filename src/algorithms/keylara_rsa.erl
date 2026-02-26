@@ -29,13 +29,13 @@ generate_keypair() ->
 
 %% @doc Generate an RSA keypair of the given size.
 %%
-%% Entropy is fetched from the ALARA pool via `keylara:get_entropy_bytes/1`
+%% Entropy is fetched from the ALARA pool via keylara:get_entropy_bytes/1
 %% as a confirmation that the entropy system is healthy before delegating
-%% the actual key generation to OTP's `public_key` module.
+%% the actual key generation to OTP's public_key module.
 %%
-%% Note: `public_key:generate_key/1` calls `crypto` internally.  There
+%% Note: public_key:generate_key/1 calls crypto internally.  There
 %% is no mechanism in OTP to inject external entropy into that call, so
-%% seeding `rand` (the old approach) had no effect on RSA key generation.
+%% seeding rand (the old approach) had no effect on RSA key generation.
 %% The entropy check here serves as a liveness gate only.
 %%
 %% @param KeySize - RSA key size in bits (1024, 2048, 3072, or 4096)
@@ -116,7 +116,7 @@ decrypt(_EncryptedData, _PrivateKey) ->
 extract_public_key(#'RSAPrivateKey'{modulus = N, publicExponent = E}) ->
     #'RSAPublicKey'{modulus = N, publicExponent = E}.
 
-%% @doc Validate that `KeySize` is a supported RSA key size.
+%% @doc Validate that KeySize is a supported RSA key size.
 -spec validate_key_size(integer()) -> ok | keylara_error().
 validate_key_size(KeySize) when is_integer(KeySize) ->
     ValidSizes = [1024, 2048, 3072, 4096],

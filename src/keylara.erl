@@ -20,9 +20,9 @@
 
 %% @doc Start Keylara and its dependencies.
 %%
-%% Starts the `crypto`, `public_key`, and `alara` OTP applications, then
+%% Starts the crypto, public_key, and alara OTP applications, then
 %% creates an ALARA entropy pool and stores its PID in a persistent term
-%% for fast, lock-free access by `get_entropy_bytes/1`.
+%% for fast, lock-free access by get_entropy_bytes/1.
 -spec start() -> ok | {error, term()}.
 start() ->
     application:ensure_all_started(crypto),
@@ -70,14 +70,14 @@ get_network_pid() ->
 %%% Entropy Management
 %%%===================================================================
 
-%% @doc Get `NBytes` cryptographically secure random bytes from ALARA.
+%% @doc Get NBytes cryptographically secure random bytes from ALARA.
 %%
 %% The ALARA network collects entropy from all its worker nodes in
 %% parallel and mixes the result with SHA3-256 before returning it.
 %% This function is the single point of entropy consumption for all
 %% KeyLARA cryptographic operations (AES, ChaCha20, RSA, ML-KEM, …).
 %%
-%% Returns `{error, network_not_initialized}` if `keylara:start/0` has
+%% Returns {error, network_not_initialized} if keylara:start/0 has
 %% not been called yet.
 -spec get_entropy_bytes(pos_integer()) -> {ok, binary()} | {error, term()}.
 get_entropy_bytes(NBytes) when is_integer(NBytes), NBytes > 0 ->
