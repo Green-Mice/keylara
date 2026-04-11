@@ -12,44 +12,32 @@
     get_network_pid/0
 ]).
 
--define(NETWORK_KEY, keylara_network_pid).
-
 %%%===================================================================
 %%% Application Management
 %%%===================================================================
 
 %% @doc Start Keylara and its dependencies.
 %%
-%% Starts the crypto, public_key, and alara OTP applications, then
-%% creates an ALARA entropy pool and stores its PID in a persistent term
-%% for fast, lock-free access by get_entropy_bytes/1.
+%% Starts the crypto, public_key, and alara OTP applications.
+%% The ALARA entropy pool starts automatically as part of the alara
+%% application (pool size configured via {alara, [{pool_size, N}]}).
 -spec start() -> ok | {error, term()}.
 start() ->
     application:ensure_all_started(crypto),
     application:ensure_all_started(public_key),
     case application:ensure_all_started(alara) of
-        {ok, _} ->
-            case alara:create_network() of
-                {ok, NetPid} ->
-                    persistent_term:put(?NETWORK_KEY, NetPid),
-                    io:format("Keylara started with ALARA entropy pool (PID: ~p)~n", [NetPid]),
-                    ok;
-                {error, Reason} ->
-                    {error, {failed_to_create_network, Reason}}
-            end;
-        {error, Reason} ->
-            {error, {failed_to_start_alara, Reason}}
+        {ok, _} -> ok;
+        {error, Reason} -> {error, {failed_to_start_alara, Reason}}
     end.
 
-%% @doc Stop Keylara and release the entropy pool PID.
+%% @doc Stop Keylara.
+%%
+%% Note: the ALARA entropy pool is managed by the OTP application framework.
+%% Its lifecycle is tied to the application that declared alara in its
+%% {applications, [...]} list. Stopping it here would affect all callers
+%% on the node.
 -spec stop() -> ok.
 stop() ->
-    case persistent_term:get(?NETWORK_KEY, undefined) of
-        undefined -> ok;
-        _         -> persistent_term:erase(?NETWORK_KEY)
-    end,
-    application:stop(alara),
-    io:format("Keylara stopped~n"),
     ok.
 
 %% @doc Return the current Keylara version string.
@@ -57,13 +45,12 @@ stop() ->
 get_version() ->
     "1.0.3".
 
-%% @doc Return the PID of the running ALARA entropy network.
+%% @doc Return the PID of the running ALARA entropy pool supervisor.
 -spec get_network_pid() -> {ok, pid()} | {error, term()}.
 get_network_pid() ->
-    case persistent_term:get(?NETWORK_KEY, undefined) of
+    case whereis(alara_node_sup) of
         undefined        -> {error, network_not_initialized};
-        Pid when is_pid(Pid) -> {ok, Pid};
-        _                -> {error, invalid_network_pid}
+        Pid when is_pid(Pid) -> {ok, Pid}
     end.
 
 %%%===================================================================
@@ -72,29 +59,22 @@ get_network_pid() ->
 
 %% @doc Get NBytes cryptographically secure random bytes from ALARA.
 %%
-%% The ALARA network collects entropy from all its worker nodes in
-%% parallel and mixes the result with SHA3-256 before returning it.
+%% The ALARA pool collects entropy from all worker nodes in parallel
+%% and mixes the result with SHA3-256 before returning it.
 %% This function is the single point of entropy consumption for all
-%% KeyLARA cryptographic operations (AES, ChaCha20, RSA, ML-KEM, …).
+%% KeyLARA cryptographic operations (AES, ChaCha20, RSA, ML-KEM, ...).
 %%
-%% Returns {error, network_not_initialized} if keylara:start/0 has
-%% not been called yet.
+%% Returns {error, {failed_to_get_entropy, no_nodes}} if the alara
+%% application has not been started yet.
 -spec get_entropy_bytes(pos_integer()) -> {ok, binary()} | {error, term()}.
 get_entropy_bytes(NBytes) when is_integer(NBytes), NBytes > 0 ->
-    case get_network_pid() of
-        {ok, _Pid} ->
-            %% alara:generate_random_bytes/1 calls crypto:strong_rand_bytes/1
-            %% on every worker and mixes contributions with SHA3-256.
-            case alara:generate_random_bytes(NBytes) of
-                Bytes when is_binary(Bytes), byte_size(Bytes) =:= NBytes ->
-                    {ok, Bytes};
-                {error, Reason} ->
-                    {error, {failed_to_get_entropy, Reason}};
-                Other ->
-                    {error, {failed_to_get_entropy, {unexpected_result, Other}}}
-            end;
+    case alara:generate_random_bytes(NBytes) of
+        Bytes when is_binary(Bytes), byte_size(Bytes) =:= NBytes ->
+            {ok, Bytes};
         {error, Reason} ->
-            {error, {failed_to_get_entropy, Reason}}
+            {error, {failed_to_get_entropy, Reason}};
+        Other ->
+            {error, {failed_to_get_entropy, {unexpected_result, Other}}}
     end;
 get_entropy_bytes(NBytes) ->
     {error, {invalid_byte_count, NBytes}}.
